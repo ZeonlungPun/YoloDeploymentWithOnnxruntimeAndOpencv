@@ -7,16 +7,16 @@ using namespace cv;
 
 int main(int argc, char **argv)
 {
-    bool runOnGPU = false;
+    bool runOnGPU = true;
 
-    // 1. 设置你的onnx模型
+    // 1. set your onnx model
     // Note that in this example the classes are hard-coded and 'classes.txt' is a place holder.
     Inference inf("/home/punzeonlung/CPP/yolov8/yolov8n.onnx", cv::Size(640, 480), "classes.txt", runOnGPU); // classes.txt 可以缺失
 
-    // 2. 设置你的输入图片
+    // 2. set image path
     std::vector<std::string> imageNames;
     imageNames.push_back("/home/punzeonlung/CPP/yolov8/1.jpg");
-    //imageNames.push_back("zidane.jpg");
+  
 
     for (int i = 0; i < imageNames.size(); ++i)
     {
@@ -28,9 +28,8 @@ int main(int argc, char **argv)
         int detections = output.size();
         std::cout << "Number of detections:" << detections << std::endl;
 
-        // feiyull
-        // 这里需要resize下，否则结果不对
-        cv::resize(frame, frame, cv::Size(480, 640));
+      
+        cv::resize(frame, frame, cv::Size(640, 480));
 
         for (int i = 0; i < detections; ++i)
         {
