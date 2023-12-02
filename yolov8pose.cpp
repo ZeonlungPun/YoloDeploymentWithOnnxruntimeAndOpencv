@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
 	cv::Mat image = cv::Mat::zeros(cv::Size(_max, _max), CV_8UC3);
 	cv::Rect roi(0, 0, w, h);
 	frame.copyTo(image(roi));
+	//模型是將圖片resize到（640,640）進行推斷的，故模型結果要與一個系數作乘法以適應圖片真正大小
 	x_factor = image.cols / static_cast<float>(640);
 	y_factor = image.rows / static_cast<float>(640);
 
