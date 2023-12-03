@@ -37,6 +37,7 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 	cv::RNG rng;
 	float x_factor = 0.0;
 	float y_factor = 0.0;
+	//最終輸出的mask與標準輸入尺寸的比值
 	float sx = 160.0f / imgsize;
 	float sy = 160.0f / imgsize;
 	// InferSession
@@ -152,6 +153,7 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 			float cy = det_output.at<float>(i, 1);
 			float ow = det_output.at<float>(i, 2);
 			float oh = det_output.at<float>(i, 3);
+			//將圖片由標準輸入尺寸（如640x640）轉化到真實尺寸
 			int x = static_cast<int>((cx - 0.5 * ow) * x_factor);
 			int y = static_cast<int>((cy - 0.5 * oh) * y_factor);
 			int width = static_cast<int>(ow * x_factor);
@@ -174,7 +176,7 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 	cv::dnn::NMSBoxes(boxes, confidences, 0.25, 0.45, indexes);
 	cv::Mat rgb_mask = cv::Mat::zeros(frame.size(), frame.type());
 
-
+	//遍歷每個box，獲取box內的instance segement
 	for (size_t i = 0; i < indexes.size(); i++) {
 		int idx = indexes[i];
 		int cid = classIds[idx];
@@ -192,12 +194,15 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 		}
 		// 1x25600 -->  1x160x160
 		cv::Mat m1 = m.reshape(1, 160);
+
+		// x1/x_factor : 將圖片由真實尺寸轉化到標準輸入尺寸（如640x640）
+		// （x1/x_factor）*sx：將圖片由標準輸入尺寸（如640x640）轉化到 特徵圖（160x160）對應的尺寸
 		int mx1 = std::max(0, int((x1 * sx) / x_factor));
 		int mx2 = std::max(0, int((x2 * sx) / x_factor));
 		int my1 = std::max(0, int((y1 * sy) / y_factor));
 		int my2 = std::max(0, int((y2 * sy) / y_factor));
 
-		// fix out of range box boundary on 2022-12-14
+		// fix out of range box boundary 
 		if (mx2 >= m1.cols) {
 			mx2 = m1.cols - 1;
 		}
@@ -206,9 +211,11 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 		}
 		// end fix it!!
 
+		//得到box所在的子圖
 		cv::Mat mask_roi = m1(cv::Range(my1, my2), cv::Range(mx1, mx2));
 		cv::Mat rm, det_mask;
 		cv::resize(mask_roi, rm, cv::Size(x2 - x1, y2 - y1));
+		//得到像素的分類結果
 		for (int r = 0; r < rm.rows; r++) {
 			for (int c = 0; c < rm.cols; c++) {
 				float pv = rm.at<float>(r, c);
@@ -220,6 +227,7 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 				}
 			}
 		}
+		//任意分配個顏色
 		rm = rm * rng.uniform(0, 255);
 		rm.convertTo(det_mask, CV_8UC1);
 		if ((y1 + det_mask.rows) >= frame.rows) {
@@ -228,9 +236,11 @@ cv::Mat main_detectprocess_with_yolov8(std::string& onnxpath, std::vector<std::s
 		if ((x1 + det_mask.cols) >= frame.cols) {
 			x2 = frame.cols - 1;
 		}
-		// std::cout << "x1: " << x1 << " x2:" << x2 << " y1: " << y1 << " y2: " << y2 << std::endl;
+		//創建一張空白mask
 		cv::Mat mask = cv::Mat::zeros(cv::Size(frame.cols, frame.rows), CV_8UC1);
+		//將目標mask（與box一樣大）複製到空白mask（與原始圖片所在位置）box所在位置
 		det_mask(cv::Range(0, y2 - y1), cv::Range(0, x2 - x1)).copyTo(mask(cv::Range(y1, y2), cv::Range(x1, x2)));
+		//將mask與rgbmask相加（融合）
 		add(rgb_mask, cv::Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255)), rgb_mask, mask);
 		cv::rectangle(frame, boxes[idx], cv::Scalar(0, 0, 255), 2, 8, 0);
 		putText(frame, labels[cid].c_str(), boxes[idx].tl(), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 4, 8);
@@ -252,6 +262,7 @@ void SegementImage(std::string& onnxpath, std::vector<std::string>& labels,float
 	putText(frame, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 8);
 
 	cv::Mat result;
+	//原圖與mask相加
 	cv::addWeighted(frame, 0.5, rgb_mask, 0.5, 0, result);
 	result.copyTo(frame);
 
