@@ -219,8 +219,7 @@ void Draw(cv::Mat& image,std::vector<RotatedBOX>& detect_boxes)
 
     }
 
-    cv::imshow("RotatedRect", image);
-    cv::waitKey(0);
+  
 
 
 }
@@ -236,6 +235,8 @@ void detect_img_yolov8(std::string &img_name, std::string &onnx_path_name, std::
 	float t = (cv::getTickCount() - start) / static_cast<float>(cv::getTickFrequency());
 	putText(input_image, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 8);
 	Draw( input_image, detect_boxes);
+	cv::imshow("RotatedRect", input_image);
+    cv::waitKey(0);
 
 
 }
@@ -243,8 +244,8 @@ void detect_img_yolov8(std::string &img_name, std::string &onnx_path_name, std::
 
 void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, std::vector<std::string>& labels)
 {
-	//VideoCapture cap(video_name);
-	VideoCapture cap(0);
+	VideoCapture cap(video_name);
+	//VideoCapture cap(0);
 	if (!cap.isOpened())
 	{
 		cout << "load error" << endl;
@@ -263,6 +264,8 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 		float t = (cv::getTickCount() - start) / static_cast<float>(cv::getTickFrequency());
 		putText(frame, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 8);
 		Draw(frame, detect_boxes);
+		cv::imshow("RotatedRect", frame);
+    	cv::waitKey(1);
 
 	}
 
@@ -272,10 +275,11 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 int main()
 {
    
-	std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
+	//std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
 	std::string onnx_path_name="/home/kingargroo/cpp/yolov8obbOPENCV/yolov8n-obb.onnx";
-	detect_img_yolov8(img_name, onnx_path_name, labels);
-    
+	//detect_img_yolov8(img_name, onnx_path_name, labels);
+    std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/car.mp4";
+	detect_video_yolov8( video_name,  onnx_path_name,  labels);
 
 
 }
