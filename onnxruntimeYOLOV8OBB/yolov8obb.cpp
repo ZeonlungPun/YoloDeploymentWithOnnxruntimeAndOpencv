@@ -7,8 +7,8 @@
 using namespace cv;
 using namespace std;
 #define pi acos(-1)
-float modelScoreThreshold=0.3;
-float modelNMSThreshold=0.35;
+float modelScoreThreshold=0.2;
+float modelNMSThreshold=0.5;
 
 std::vector<std::string> labels = {"plane","ship","storage tank","baseball diamond","tennis court" ,"basketball court","ground track field","harbor","bridge","large vehicle","small vehicle","helicopter","roundabout","soccer ball field","swimming pool"};
 
@@ -113,6 +113,7 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 	std::vector<cv::RotatedRect> boxes;
 	std::vector<float> confidences;
     std::vector<RotatedBOX>BOXES;
+    std::vector<int>class_list;
 
 	for (int i = 0; i < det_output.rows; i++) {
 		cv::Mat classes_scores = det_output.row(i).colRange(4, 4+labels.size());
@@ -136,6 +137,7 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
             }
            
             BOX.Classindex=classIdPoint.x;
+            class_list.push_back(classIdPoint.x);
             BOX.score=score; 
             cv::RotatedRect box=cv::RotatedRect(cv::Point2f(cx,cy),cv::Size2f(ow,oh),angle*180/pi);
             BOX.box=box;
@@ -145,18 +147,52 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 		}
 	}
 
-	// NMS
-	std::vector<int> nms_result;
-	cv::dnn::NMSBoxes(boxes, confidences,modelScoreThreshold,modelNMSThreshold, nms_result);
-	std::vector<RotatedBOX> Remain_boxes;
-    for (unsigned long i = 0; i < nms_result.size(); ++i)
-    {
-        int idx = nms_result[i];
-        RotatedBOX Box_=BOXES[idx];
-        Remain_boxes.push_back(Box_);
-    }
+    // NMS accoding to each class
 
-    
+    // std::set<int>uniqueClass(class_list.begin(),class_list.end());
+    // std::vector<int>uniqueClass_(uniqueClass.begin(),uniqueClass.end());
+    std::vector<RotatedBOX> Remain_boxes;
+	std::vector<int> nms_result;
+	cv::dnn::NMSBoxes(boxes,confidences,modelScoreThreshold,modelNMSThreshold, nms_result);
+
+
+	for (int i=0;i< nms_result.size();i++)
+	{
+		int index=nms_result[i];
+		RotatedBOX Box_=BOXES[index];
+		Remain_boxes.push_back(Box_);
+
+	}
+
+    // for (int j=0;j< uniqueClass_.size();j++ )
+    // {
+        
+    //     int current_class=uniqueClass_[j];
+    //     cout<<current_class<<endl;
+    //     std::vector<cv::RotatedRect>cur_boxes;
+    //     std::vector<float>cur_confidences;
+    //     for (int i=0;i<BOXES.size();i++)
+    //     {
+    //         if (BOXES[i].Classindex == 14) 
+    //         {
+    //             cur_boxes.push_back(BOXES[i].box);
+    //             cur_confidences.push_back(BOXES[i].score);
+    //         }
+    //     }
+    //     std::vector<int> nms_result;
+	//     cv::dnn::NMSBoxes(cur_boxes,cur_confidences,modelScoreThreshold,modelNMSThreshold, nms_result);
+        
+    //     for (unsigned long ii = 0; ii < nms_result.size(); ++ii)
+    //     {
+    //         int idx = nms_result[ii];
+    //         RotatedBOX Box_=BOXES[idx];
+    //         Remain_boxes.push_back(Box_);
+    //     }
+
+
+    // }
+	
+	
 	session_options.release();
 	session_.release();
     return Remain_boxes;
@@ -189,14 +225,62 @@ void Draw(cv::Mat& image,std::vector<RotatedBOX>& detect_boxes)
 
 }
 
+void detect_img_yolov8(std::string &img_name, std::string &onnx_path_name, std::vector<std::string> &labels)
+{
+	Mat input_image = cv::imread(img_name);
+	int ih = input_image.rows;
+	int iw = input_image.cols;
+	int64 start = cv::getTickCount();
+	std::vector<RotatedBOX> detect_boxes=main_detectprocess_with_yolov8(onnx_path_name, labels, input_image);
+	// FPS render it
+	float t = (cv::getTickCount() - start) / static_cast<float>(cv::getTickFrequency());
+	putText(input_image, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 8);
+	Draw( input_image, detect_boxes);
+
+
+}
+
+
+void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, std::vector<std::string>& labels)
+{
+	//VideoCapture cap(video_name);
+	VideoCapture cap(0);
+	if (!cap.isOpened())
+	{
+		cout << "load error" << endl;
+	}
+	Mat frame;
+	while (true)
+	{
+		cap >> frame;
+		if (frame.empty())
+		{
+			break;
+		}
+		int64 start = cv::getTickCount();
+		std::vector<RotatedBOX> detect_boxes=main_detectprocess_with_yolov8( onnx_path_name, labels,  frame);
+		// FPS render it
+		float t = (cv::getTickCount() - start) / static_cast<float>(cv::getTickFrequency());
+		putText(frame, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 8);
+		Draw(frame, detect_boxes);
+
+	}
+
+
+}
 
 int main()
 {
-    std::string model_path="/home/kingargroo/cpp/yolov8obbOPENCV/yolov8n-obb.onnx";
-    cv::Mat input_image=cv::imread("/home/kingargroo/cpp/yolov8obbOPENCV/test4.jpg");
-    std::vector<RotatedBOX> detect_boxes=main_detectprocess_with_yolov8(model_path,  labels,input_image);
-    Draw( input_image, detect_boxes);
+   
+	std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
+	std::string onnx_path_name="/home/kingargroo/cpp/yolov8obbOPENCV/yolov8n-obb.onnx";
+	detect_img_yolov8(img_name, onnx_path_name, labels);
     
 
 
 }
+
+
+
+
+
