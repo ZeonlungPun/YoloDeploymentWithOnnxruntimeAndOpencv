@@ -10,6 +10,7 @@ using namespace std;
 float modelScoreThreshold=0.2;
 float modelNMSThreshold=0.5;
 
+
 std::vector<std::string> labels = {"plane","ship","storage tank","baseball diamond","tennis court" ,"basketball court","ground track field","harbor","bridge","large vehicle","small vehicle","helicopter","roundabout","soccer ball field","swimming pool"};
 
 
@@ -63,7 +64,7 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 		auto input_dims = input_tensor_info.GetShape();
 		input_w = input_dims[3];
 		input_h = input_dims[2];
-		std::cout << "input format: NxCxHxW = " << input_dims[0] << "x" << input_dims[1] << "x" << input_dims[2] << "x" << input_dims[3] << std::endl;
+		//std::cout << "input format: NxCxHxW = " << input_dims[0] << "x" << input_dims[1] << "x" << input_dims[2] << "x" << input_dims[3] << std::endl;
 	}
 
 	// get the output information
@@ -80,7 +81,7 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 		auto out_name = session_.GetOutputNameAllocated(i, allocator);
 		output_node_names.push_back(out_name.get());
 	}
-	std::cout << "input: " << input_node_names[0] << " output: " << output_node_names[0] << std::endl;
+	//std::cout << "input: " << input_node_names[0] << " output: " << output_node_names[0] << std::endl;
 
 	
 	float x_factor = image.cols / static_cast<float>(input_w);
@@ -214,7 +215,7 @@ void Draw(cv::Mat& image,std::vector<RotatedBOX>& detect_boxes)
         {
             cv::line(image, points[i], points[(i + 1) % 4], cv::Scalar(0, 0, 255), 2);  
         }
-        cv::putText(image, labels[class_id], points[0], cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 2);
+        cv::putText(image, labels[class_id], points[0], cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255, 0, 0), 1, 1);
 
 
     }
@@ -251,6 +252,13 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 		cout << "load error" << endl;
 	}
 	Mat frame;
+
+	int frame_width = cap.get(CAP_PROP_FRAME_WIDTH);
+    int frame_height = cap.get(CAP_PROP_FRAME_HEIGHT);
+    int frame_fps = cap.get(CAP_PROP_FPS);
+
+    VideoWriter video("carobb.mp4", VideoWriter::fourcc('M', 'P', '4', 'V'), frame_fps, Size(frame_width, frame_height));
+
 	while (true)
 	{
 		cap >> frame;
@@ -264,8 +272,10 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 		float t = (cv::getTickCount() - start) / static_cast<float>(cv::getTickFrequency());
 		putText(frame, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(255, 0, 0), 2, 8);
 		Draw(frame, detect_boxes);
-		cv::imshow("RotatedRect", frame);
-    	cv::waitKey(1);
+		video.write(frame);
+		
+		//cv::imshow("RotatedRect", frame);
+    	//cv::waitKey(5);
 
 	}
 
@@ -278,7 +288,7 @@ int main()
 	//std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
 	std::string onnx_path_name="/home/kingargroo/cpp/yolov8obbOPENCV/yolov8n-obb.onnx";
 	//detect_img_yolov8(img_name, onnx_path_name, labels);
-    std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/car.mp4";
+    std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/cars2.mp4";
 	detect_video_yolov8( video_name,  onnx_path_name,  labels);
 
 
