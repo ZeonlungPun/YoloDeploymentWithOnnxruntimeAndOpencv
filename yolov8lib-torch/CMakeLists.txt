@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+project(example-app)
+
+set(Torch_DIR /home/kingargroo/cpp/torch1/libtorch/share/cmake/Torch)
+find_package(Torch REQUIRED)
+find_package(OpenCV  REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+include_directories(${OpenCV_INCLUDE_DIRS})
+add_executable(example-app yolov8libtorch.cpp)
+target_link_libraries(example-app "${TORCH_LIBRARIES}" ${OpenCV_LIBS})
+set_property(TARGET example-app PROPERTY CXX_STANDARD 17)
