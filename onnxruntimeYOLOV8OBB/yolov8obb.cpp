@@ -132,7 +132,7 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 			float oh = det_output.at<float>(i, 3)* y_factor;
             float angle=det_output.at<float>(i,4+labels.size());
             //angle in [-pi/4,3/4 pi) --》 [-pi/2,pi/2)
-            if (angle>=pi && angle <= 0.75*pi)
+            if (angle>=0.5*pi && angle <= 0.75*pi)
             {
                 angle=angle-pi;
             }
@@ -285,11 +285,11 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 int main()
 {
    
-	//std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
+	std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
 	std::string onnx_path_name="/home/kingargroo/cpp/yolov8obbOPENCV/yolov8n-obb.onnx";
-	//detect_img_yolov8(img_name, onnx_path_name, labels);
-    std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/cars2.mp4";
-	detect_video_yolov8( video_name,  onnx_path_name,  labels);
+	detect_img_yolov8(img_name, onnx_path_name, labels);
+    //std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/cars2.mp4";
+	//detect_video_yolov8( video_name,  onnx_path_name,  labels);
 
 
 }
