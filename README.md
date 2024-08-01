@@ -55,7 +55,11 @@ Ort::Session session_(env, modelPath.c_str(), session_options);
 # Reference Paper
 
 Yolov7: https://arxiv.org/abs/2207.02696
+
 RTDETR: https://arxiv.org/abs/2304.08069
+
 YoloP : https://arxiv.org/abs/2108.11250
+
 YOLACT/Yolov8pose:https://arxiv.org/abs/1904.02689
+
 YoloT: https://arxiv.org/pdf/1805.09512.pdf
