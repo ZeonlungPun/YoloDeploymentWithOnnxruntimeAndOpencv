@@ -21,6 +21,18 @@ float modelNMSThreshold = 0.6;
 std::vector<std::string> labels3 = {"millet"};
 
 
+//delete a specific folder
+void delete_folder(fs::path FolderPath)
+{
+    if (fs::exists(FolderPath)&& fs::is_directory(FolderPath))
+    {
+        fs::remove_all(FolderPath);
+        std::cout << "Folder deleted successfully."<<std::endl;
+    }
+}
+
+
+
 //CUT the big image into smaller patches
 void slice_img(const cv::Mat& img, const std::string& out_folder = "scratch_file",
                int sliceHeight = 640, int sliceWidth = 640,
@@ -134,8 +146,8 @@ void predict_with_yolov8(std::string& onnx_path_name, std::string& img_path, std
 	}
 	std::cout << "input: " << input_node_names[0] << " output: " << output_node_names[0] << std::endl;
 
-
-    
+    //read all the image in the folder all predict using Yolov8
+    auto t0 =std::chrono::high_resolution_clock::now();
     for (const auto& entry : fs::directory_iterator(img_path)) {
         if (entry.path().extension() == ".jpg") {
             std::string img_name = entry.path().filename().string();
@@ -155,6 +167,7 @@ void predict_with_yolov8(std::string& onnx_path_name, std::string& img_path, std
             float x_factor = image.cols / static_cast<float>(input_w);
             float y_factor = image.rows / static_cast<float>(input_h);
             
+
             cv::Mat blob = cv::dnn::blobFromImage(image, 1 / 255.0, cv::Size(input_w, input_h), cv::Scalar(0, 0, 0), true, false);
             size_t tpixels = input_h * input_w * 3;
             std::array<int64_t, 4> input_shape_info{ 1, 3, input_h, input_w };
@@ -200,6 +213,7 @@ void predict_with_yolov8(std::string& onnx_path_name, std::string& img_path, std
                     }
                 }
             }
+            
 
             std::vector<int> indexes;
             cv::dnn::NMSBoxes(boxes, confidences, modelScoreThreshold, modelNMSThreshold, indexes);
@@ -210,6 +224,9 @@ void predict_with_yolov8(std::string& onnx_path_name, std::string& img_path, std
             }
         }
     }
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = t1 - t0;
+    std::cout << "detection+NMS time: " << elapsed.count() << "seconds" << std::endl;
 }
 
 
@@ -377,12 +394,14 @@ std::vector<DataFrameRow> augment_data(
         }
         //轉化成string流
         std::istringstream ss(coo_tmp);
+
+        //get the information from the image name
         std::string token;
         std::vector<std::string> tokens;
         while (std::getline(ss, token, '_')) {
             tokens.push_back(token);
         }
-        //
+        
         row.Upper = std::stof(tokens[0]);
         row.Left = std::stof(tokens[1]);
         row.Height = std::stof(tokens[2]);
@@ -439,7 +458,7 @@ std::vector<DataFrameRow> augment_data(
 
     auto t1 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = t1 - t0;
-    std::cout << "用時: " << elapsed.count() << " 秒" << std::endl;
+    std::cout << "get global coordinate time: " << elapsed.count() << "seconds" << std::endl;
     std::cout << "剩余: " << df_new.size() << std::endl;
 
     return df_new;
@@ -458,6 +477,8 @@ std::pair<cv::Mat, int> draw_for_millet(std::vector<DataFrameRow>& filter_data_l
 
 
 //綜合函數：執行裁切大圖、預測、小圖預測結果轉爲大圖預測結果、拼接等步驟
+//comprehensive function: cut the big image into smaller patches, transform the patch prediction into big image prediction
+// draw the final resultg
 std::pair<cv::Mat, int> execute(cv::Mat img, const std::string& labels_dir = "scratch_file",
             int subgraph_size = 640,
             const std::vector<std::string>& classes = {"millet"},
@@ -489,7 +510,7 @@ std::pair<cv::Mat, int> execute(cv::Mat img, const std::string& labels_dir = "sc
 
                 std::string cat_str = classes.empty() ? "" : classes[cat_int];
                 std::vector<float> box = {x_frac, y_frac, w_frac, h_frac};
-                auto pix_box = convert_reverse({640,640},box);
+                auto pix_box = convert_reverse({subgraph_size,subgraph_size},box);
                 float x0 = pix_box[0], x1 = pix_box[1], y0 = pix_box[2], y1 = pix_box[3];
 
                 DataFrameRow out_data_list={prefix_name, prob, x0, y0, x1, y1, cat_int, cat_str, "", "","" ,"",0, 0, 0, 0,0,0,0,0,0,0,0};
@@ -542,7 +563,9 @@ std::pair<cv::Mat, int> execute(cv::Mat img, const std::string& labels_dir = "sc
     }
 
     auto [image, count_number]=draw_for_millet(filter_data_list,img);
-
+    
+    //delete the temporary folder
+    delete_folder(labels_dir);
     return {image, count_number};
 
 
@@ -554,19 +577,18 @@ std::pair<cv::Mat, int> execute(cv::Mat img, const std::string& labels_dir = "sc
 int main()
 {
     std::string model_name="/home/kingargroo/seed/ablation1/v8n.onnx";
-    std::string img_savepath="scratch_file";
-    std::string label_savepath="scratch_file";
+    std::string img_savepath="/home/kingargroo/cpp/millet/build/scratch_file";
+    std::string label_savepath="/home/kingargroo/cpp/millet/build/scratch_file";
     
     std::string img_path="/home/kingargroo/seed/ablation1/millet/WIN_20231101_11_19_29_Pro.jpg";
     Mat img=cv::imread(img_path);
-    //slice_img(img);
+    slice_img(img);
     predict_with_yolov8(model_name,img_savepath,label_savepath);
     auto [image, count_number]=execute(img,label_savepath);
+    cout<<count_number<<endl;
+    std::cout<<"finsh"<<std::endl;
     cv::imwrite("result.jpg",image);
    
-
-
-
 
     return 0;
 }
