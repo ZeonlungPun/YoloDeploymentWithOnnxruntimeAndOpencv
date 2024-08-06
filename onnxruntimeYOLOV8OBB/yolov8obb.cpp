@@ -76,7 +76,7 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 	output_h = output_dims[1]; // 84
 	output_w = output_dims[2]; // 8400
 
-	std::cout << "output format : HxW = " << output_dims[1] << "x" << output_dims[2] << std::endl;
+	//std::cout << "output format : HxW = " << output_dims[1] << "x" << output_dims[2] << std::endl;
 	for (int i = 0; i < numOutputNodes; i++) {
 		auto out_name = session_.GetOutputNameAllocated(i, allocator);
 		output_node_names.push_back(out_name.get());
@@ -130,11 +130,12 @@ std::vector<RotatedBOX> main_detectprocess_with_yolov8(std::string& onnx_path_na
 			float cy = det_output.at<float>(i, 1)* y_factor;
 			float ow = det_output.at<float>(i, 2)*x_factor;
 			float oh = det_output.at<float>(i, 3)* y_factor;
-            float angle=det_output.at<float>(i,4+labels.size());
+            float angle=det_output.at<float>(i,det_output.cols-1);
             //angle in [-pi/4,3/4 pi) --》 [-pi/2,pi/2)
             if (angle>=0.5*pi && angle <= 0.75*pi)
             {
                 angle=angle-pi;
+				//cout<<angle<<endl;
             }
            
             BOX.Classindex=classIdPoint.x;
@@ -274,8 +275,8 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 		Draw(frame, detect_boxes);
 		video.write(frame);
 		
-		//cv::imshow("RotatedRect", frame);
-    	//cv::waitKey(5);
+		cv::imshow("RotatedRect", frame);
+    	cv::waitKey(5);
 
 	}
 
@@ -285,10 +286,10 @@ void detect_video_yolov8(std::string& video_name, std::string& onnx_path_name, s
 int main()
 {
    
-	std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test1.jpeg";
-	std::string onnx_path_name="/home/kingargroo/cpp/yolov8obbOPENCV/yolov8n-obb.onnx";
+	std::string img_name="/home/kingargroo/cpp/yolov8obbOPENCV/test4.jpg";
+	std::string onnx_path_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/yolov8m-obb.onnx";
 	detect_img_yolov8(img_name, onnx_path_name, labels);
-    //std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/cars2.mp4";
+    std::string video_name="/home/kingargroo/cpp/onnxruntimeYOLOV8OBB/cars2.mp4";
 	//detect_video_yolov8( video_name,  onnx_path_name,  labels);
 
 
