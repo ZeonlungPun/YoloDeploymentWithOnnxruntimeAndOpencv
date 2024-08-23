@@ -60,6 +60,8 @@ RTDETR: https://arxiv.org/abs/2304.08069
 
 YoloP : https://arxiv.org/abs/2108.11250
 
-YOLACT/Yolov8pose:https://arxiv.org/abs/1904.02689
+YOLACT/Yolov8seg:https://arxiv.org/abs/1904.02689
 
 YoloT: https://arxiv.org/pdf/1805.09512.pdf
+
+Yolopose/yolov8pose: https://arxiv.org/abs/2204.06806
