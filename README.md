@@ -1,3 +1,5 @@
+[中文]([https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README_ch.md]) 
+
 # Introduction
 
 This repository contains the C++ deployment implentation of some popular object detection and other computer vision tasks.
@@ -66,5 +68,5 @@ YoloT: https://arxiv.org/pdf/1805.09512.pdf
 
 Yolopose/yolov8pose: https://arxiv.org/abs/2204.06806
 
-# Chinese Version
-[中文](https://github.com/zam1024t/LocalizedMenu/blob/master/readme/README.zh_CN.md)
+
+
