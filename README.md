@@ -68,4 +68,4 @@ YoloT: https://arxiv.org/pdf/1805.09512.pdf
 Yolopose/yolov8pose: https://arxiv.org/abs/2204.06806
 
 
-[中文版]([https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README_ch.md]) 
+[中文版](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README_ch.md) 
