@@ -56,3 +56,6 @@ YOLACT/Yolov8seg: https://arxiv.org/abs/1904.02689
 YoloT: https://arxiv.org/pdf/1805.09512.pdf
 
 Yolopose/Yolov8pose: https://arxiv.org/abs/2204.06806
+
+[English Version](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README.md) 
+
