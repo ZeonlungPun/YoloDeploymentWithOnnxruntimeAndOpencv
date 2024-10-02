@@ -21,8 +21,6 @@
  * Contact: zeonlungpun@gmail.com
  * 
  */
-
-
 #include<onnxruntime_cxx_api.h>
 #include <assert.h>
 #include <opencv2/opencv.hpp>
@@ -49,13 +47,15 @@ public:
     float confidence_thres;
     float iou_thres;
     int model_input_w, model_input_h, model_output_h, model_output_w;
-    float x_factor, y_factor;
+    float x_factor, y_factor,ratio;
     std::vector<std::string> preprocess_method;
     std::vector<std::string> input_node_names;
     std::vector<std::string> output_node_names;
     Ort::Env env;
     Ort::SessionOptions session_options;
     Ort::Session session;
+    int top,left;
+
 
     YolovUltralyticsInference(
         std::vector<std::string> labels,
@@ -126,20 +126,20 @@ public:
     cv::Mat preprocess() {
                /*
 	Preprocesses the input image before performing inference.
-	prepocess_method:the image preprocess method,including direct,letter_box, copy_paste
+	prepocess_method:the image preprocess method,including direct,letter_box, square_padding
 	
 	Returns:
 		None
 	*/
         this->result_image = this->input_image.clone();
         cv::Mat blob;
-
         // Convert the image color space from BGR to RGB
         cv::cvtColor(this->input_image, this->input_image, cv::COLOR_BGR2RGB);
 
         // Preprocesses the input image according to different selected method
 		if (this->preprocess_method== std::vector<std::string>{"direct"})
 		{	
+            
 			//Resize the image to match the input shape
     		cv::resize(this->input_image,this->input_image,cv::Size(this->model_input_w,this->model_input_h));
 			//normalize the image from [0,255] to [0,1]
@@ -147,23 +147,58 @@ public:
 		}
 		else if (this->preprocess_method==std::vector<std::string>{"letter_box"} )
 		{
-			blob=0;
+        // reference in yolov5
+			float ratio = std::min(static_cast<float>(this->model_input_h) / this->input_image.rows, 
+                       static_cast<float>(this->model_input_w) / this->input_image.cols);
+            int newh=(int) std::round(this->input_image.rows*ratio);
+            int neww=(int) std::round(this->input_image.cols*ratio);
+            cv::Size new_unpad(neww,newh);
+            //get the padding length in each size
+            float dw=(this->model_input_w-neww)/2;
+            float dh=(this->model_input_h-newh)/2;
+
+            if (neww !=this->model_input_w || newh !=this->model_input_h)
+            {  //resize the image with same ratio for wdith and height
+                cv::resize(this->input_image,this->input_image,new_unpad,cv::INTER_LINEAR);
+            }
+            // calculate the padding pixel around 
+            int top,bottom,left,right;
+            top =(int) std::round(dh-0.1);
+            bottom= (int) std::round(dh+0.1);
+            left = (int) std::round(dw-0.1);
+            right= (int) std::round(dw+0.1);
+            
+            this->top=top;
+            this->left=left;
+            this->ratio=ratio;
+           
+            cv::copyMakeBorder(this->input_image, this->input_image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+            cv::dnn::blobFromImage(this->input_image,blob, 1 / 255.0, cv::Size(this->model_input_w,this->model_input_h), cv::Scalar(0, 0, 0), true, false);
+
 		}
-		else if (this->preprocess_method==std::vector<std::string>{"copy_paste"} )
+		else if (this->preprocess_method==std::vector<std::string>{"square_padding"} )
 		{
-			// width and height for raw input image 
-			int raw_image_w = this->input_image.cols;
-			int raw_image_h = this->input_image.rows;
-			int _max = std::max(raw_image_h,raw_image_w);
-			// temporary blanket image
-			cv::Mat temp_image = cv::Mat::zeros(cv::Size(_max, _max), CV_8UC3);
-			//keep same w/h ratio
-			cv::Rect roi(0, 0, raw_image_w, raw_image_h);
-			this->input_image.copyTo(temp_image(roi));
-			//1,normalize the image from [0,255] to [0,1]
-			//2,resize the image to the specific size
-			cv::dnn::blobFromImage(temp_image,blob, 1 / 255.0, cv::Size(this->model_input_w, this->model_input_h), cv::Scalar(0, 0, 0), true, false);
-			
+			// Prepare for square_padding method by handling padding and size consistency
+            int raw_image_w = this->input_image.cols;
+            int raw_image_h = this->input_image.rows;
+            int _max = std::max(raw_image_h, raw_image_w);
+            // calculate padding
+            int top = (_max - raw_image_h) / 2;
+            int bottom = _max - raw_image_h - top;
+            int left = (_max - raw_image_w) / 2;
+            int right = _max - raw_image_w - left;
+            // Create a temporary blank square image
+            cv::Mat temp_image;
+            //padding
+            cv::copyMakeBorder(this->input_image, temp_image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+            //record
+            this->ratio = static_cast<float>(this->model_input_w) / _max;
+            this->left = left;
+            this->top  = top;
+          
+            // Normalize and resize the image
+            cv::resize(temp_image, temp_image, cv::Size(this->model_input_w, this->model_input_h));
+            blob = cv::dnn::blobFromImage(temp_image, 1 / 255.0, cv::Size(), cv::Scalar(0, 0, 0), true, false);
 		}
 		else{
 			std::cout << "prepocess_method: ";
@@ -171,7 +206,8 @@ public:
 				std::cout << method << " ";}
 			std::cout << "does not exist" << std::endl;
 		}
-		return blob;
+        return blob;
+		
     }
 
     cv::Mat draw_detections(cv::Mat img, std::vector<int> indexes, std::vector<cv::Rect> boxes, std::vector<int> classIds) {
@@ -201,7 +237,7 @@ public:
 	*/
  
         // Preprocess the image
-        cv::Mat blob = this->preprocess();
+        cv::Mat blob=this->preprocess();
 
         // Get input tensor shape info
         size_t tpixels = this->model_input_h * this->model_input_w * 3;
@@ -245,11 +281,37 @@ public:
                 float cy = det_output.at<float>(i, 1);
                 float ow = det_output.at<float>(i, 2);
                 float oh = det_output.at<float>(i, 3);
-                int x = static_cast<int>((cx - 0.5 * ow) * x_factor);
-                int y = static_cast<int>((cy - 0.5 * oh) * y_factor);
-                int width = static_cast<int>(ow * x_factor);
-                int height = static_cast<int>(oh * y_factor);
 
+                if (this->preprocess_method == std::vector<std::string>{"letter_box"}) 
+                {
+                    // Adjust coordinates based on padding and scaling
+                    cx = (cx - this->left) / this->ratio;
+                    cy = (cy - this->top) / this->ratio;
+                    ow = ow / this->ratio;
+                    oh = oh / this->ratio;
+                }
+                else if (this->preprocess_method == std::vector<std::string>{"square_padding"})
+                {
+                    cx = (cx - this->left * this->ratio) / this->ratio;
+                    cy = (cy - this->top * this->ratio) / this->ratio;
+                    ow = ow / this->ratio;
+                    oh = oh / this->ratio;
+                }
+                else {
+                // For other preprocess methods, adjust x_factor and y_factor accordingly
+                    cx = cx * this->x_factor;
+                    cy = cy * this->y_factor;
+                    ow = ow * this->x_factor;
+                    oh = oh * this->y_factor;
+                }
+                
+                int x = static_cast<int>(cx - 0.5 * ow);
+                int y = static_cast<int>(cy - 0.5 * oh);
+                int width = static_cast<int>(ow);
+                int height = static_cast<int>(oh);
+
+               
+               
                 cv::Rect box(x, y, width, height);
                 boxes.push_back(box);
                 classIds.push_back(classIdPoint.x);
@@ -273,19 +335,19 @@ int main() {
     std::vector<std::string> labels = {"beet", "corn", "cotton", "pumpkin", "sorghum", "soybean", "spinach", "watermelon", "wheat", "cowpea"};
     std::string img_name = "/home/kingargroo/seed/validate/QYTC20240423666_20240921092551073.jpg";
     std::string onnx_path_name = "/home/kingargroo/seed/ablation1/normal.onnx";
-
+    std::vector<std::string> preprocess_method = std::vector<std::string>{"square_padding"};
     // Load the image
     cv::Mat input_image = cv::imread(img_name);
 
     // Instantiate the inference class
-    YolovUltralyticsInference inference(labels, onnx_path_name, input_image);
+    YolovUltralyticsInference inference(labels, onnx_path_name, input_image,preprocess_method);
 
     // Perform inference
     cv::Mat output_image = inference.main_process();
 
     // Save the output image
     if (!output_image.empty()) {
-        cv::imwrite("result.jpg", output_image);
+        cv::imwrite("/home/kingargroo/cpp/yolov8forseed/result.jpg", output_image);
         std::cout << "Inference completed and result saved." << std::endl;
     } else {
         std::cerr << "Inference failed." << std::endl;
