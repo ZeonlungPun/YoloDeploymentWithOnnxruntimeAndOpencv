@@ -1,3 +1,28 @@
+/*
+ * YolovUltralyticsInference: A YOLOv8-based inference class for object detection
+ * 
+ * Author: Zeonlung Pun
+ * Date: October 2, 2024
+ * 
+ * Description:
+ * This class provides an implementation of Ultralytics YOLO series object detection algorithms inference 
+ * using ONNX and OpenCV.
+ * It includes methods for reading the model, preprocessing input images, running inference,
+ * and drawing detection results on the input image.
+ * 
+ * Usage:
+ * The YolovUltralyticsInference class is instantiated with the ONNX model path,
+ * input image, and optional preprocessing and threshold parameters.
+ * The `main_process` function performs the complete inference and returns the processed image.
+ *
+ * Note:
+ * This code assumes the ONNX Runtime and OpenCV libraries are properly installed and configured.
+ * 
+ * Contact: zeonlungpun@gmail.com
+ * 
+ */
+
+
 #include<onnxruntime_cxx_api.h>
 #include <assert.h>
 #include <opencv2/opencv.hpp>
