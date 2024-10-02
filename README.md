@@ -1,9 +1,18 @@
-
 # Introduction
 
-This repository contains the C++ deployment implentation of some popular object detection and other computer vision tasks.
+This repository contains the **C++** inference  implentation of some popular object detection and other known computer vision tasks.
 
-Now we offer the implentation of Opencv 4.8, onnxruntime and libtorch framework inference codes mainly on linux platform with cmakelist files.
+C++ is a key language for deployment.
+
+Now we offer the implentation of **Opencv 4.8**, **onnxruntime** and **libtorch** framework inference codes mainly on **linux** platform with cmakelist files in the **CPU** environment.
+
+# News
+[2024/10/1] We release a implentation for the comprehensive **object detection** (such as Yolov5 , Yolov8 and  Yolov11) inference developed by [Ultralytics](https://github.com/ultralytics/ultralytics) using **onnxruntime**. Code is available [here(https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/yoloUltralytics.cpp).
+</br>
+[2024/3/6]: We release a implentation for the new release **YOLOv8-obb** for oriented bounding box object detection using **onnxruntime**. Code is available [here]([https://github.com/IDEA-Research/OpenSeeD](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/onnxruntimeYOLOV8OBB).
+</br>
+[2024/3/2]: We release a implentation for the new release **YOLOv8-obb** for oriented bounding box object detection using only **opencv4.8**. Code is available [here]([https://github.com/IDEA-Research/OpenSeeD](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/yolov8obbOPENCV).
+
 
 # Function
 
