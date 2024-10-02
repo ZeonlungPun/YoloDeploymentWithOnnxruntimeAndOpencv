@@ -9,9 +9,11 @@ Now we offer the implentation of **Opencv 4.8**, **onnxruntime** and **libtorch*
 # News
 [2024/10/1]: We release a implentation for the comprehensive **object detection** (such as Yolov5 , Yolov8 and  Yolov11) inference developed by [Ultralytics](https://github.com/ultralytics/ultralytics) using **onnxruntime**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/yoloUltralytics.cpp).
 </br>
-[2024/3/6]: We release a implentation for the new release **YOLOv8-obb** for oriented bounding box object detection using **onnxruntime**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/onnxruntimeYOLOV8OBB).
+[2024/5/6]: We release a implentation for the  **YoloT**, which is use for object detection in the filed of **Remote Sensing**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/YoloT.cpp).
 </br>
-[2024/3/2]: We release a implentation for the new release **YOLOv8-obb** for oriented bounding box object detection using only **opencv4.8**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/yolov8obbOPENCV).
+[2024/3/6]: We release a implentation for the new release **Yolov8-obb** for oriented bounding box object detection using **onnxruntime**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/onnxruntimeYOLOV8OBB).
+</br>
+[2024/3/2]: We release a implentation for the new release **Yolov8-obb** for oriented bounding box object detection using only **opencv4.8**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/yolov8obbOPENCV).
 
 
 # Function
