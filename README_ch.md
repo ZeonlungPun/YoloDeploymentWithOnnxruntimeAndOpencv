@@ -4,6 +4,17 @@
 
 我們現在主要在 Linux 平台上提供了基於 OpenCV 4.8、onnxruntime 和 libtorch 框架的推理代碼，並附有 CMakeList 文件。
 
+# 新聞
+[2024/10/1]：我們發布了一個綜合目標檢測（如Yolov5、Yolov8和Yolov11）推理的實現，這些模型由Ultralytics開發，使用onnxruntime。代碼可在此處找到。 
+</br> 
+[2024/5/6]：我們發布了一個YoloT的實現，用於遙感領域中的目標檢測。代碼可在此處找到。
+</br> 
+[2024/3/6]：我們發布了一個新的Yolov8-obb實現，用於使用onnxruntime進行定向邊界框目標檢測。代碼可在此處找到。 
+</br> 
+[2024/3/2]：我們發布了一個新的Yolov8-obb實現，使用opencv4.8進行定向邊界框目標檢測。代碼可在此處找到。 
+</br> 
+[2023/3/2]：我們發布了一個Yolov8推理的實現，僅使用libtorch。代碼可在此處找到。
+
 # 功能
 
 目前的模型包括用於物體檢測的 Yolov5、Yolov7、Yolov8、RTDETR。
@@ -18,10 +29,12 @@
 
 用於實例分割的 YOLOV8-instance-seg 和 yolov5-seg.cpp。
 
-# 版本
+# 外部庫版本
 onnxruntime-linux-x64-1.16.3
 
 opencv 4.8
+
+libtorch 2.1.2
 
 # CUDA
 在 onnxruntime 中使用 CUDA：
@@ -57,5 +70,17 @@ YoloT: https://arxiv.org/pdf/1805.09512.pdf
 
 Yolopose/Yolov8pose: https://arxiv.org/abs/2204.06806
 
+# 引用
+如果您覺得我們的工作對你有所幫助，請給我們star或者在論文中引用我們的github：
+```
+@misc{YOLOVDeploymentC++,
+  author       = {Zeonlung Pun},
+  title        = {YOLOVc++},
+  year         = {2024},
+  howpublished = {\url{https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv}}
+}
+```
+
+# 其它語言
 [English Version](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README.md) 
 
