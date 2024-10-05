@@ -32,7 +32,7 @@ Yolov8pose for key points detection.
 
 YOLOV8-instance-seg and yolov5-seg.cpp for instance segemention.
 
-# Version
+#Package Version
 
 
 onnxruntime-linux-x64-1.16.3
@@ -139,5 +139,16 @@ Yolopose/yolov8pose: https://arxiv.org/abs/2204.06806
 
 
 # Citation
+If you think our wokr is helpful, please give us a star or citate our repository:
+```
+@misc{YOLOVDeploymentC++,
+  author       = {Zeonlung Pun},
+  title        = {YOLOVc++},
+  year         = {2024},
+  howpublished = {\url{https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv}}
+}
+```
+
+# Other Language
 
 [中文版](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README_ch.md) 
