@@ -80,7 +80,7 @@ or:
 find_package(OpenCV 4 REQUIRED)
 ```
 
-2, You need to change the trained weight or checkpoint to the **onnx** format (onnxruntime and opencv) or **torchscript**(libtorch) format.
+2, You need to transform the trained weight or checkpoint to the **onnx** format (onnxruntime and opencv) or **torchscript**(libtorch) format.
 ```
 from ultralytics import YOLO
 #Load a model
