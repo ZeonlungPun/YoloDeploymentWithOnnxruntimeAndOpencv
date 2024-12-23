@@ -119,6 +119,9 @@ int main() {
     return 0;
 }
 ```
+# Related Blogs
+
+My experience about onnx deployment: https://medium.com/@zeonlungpun/how-to-avoid-unlimited-memory-accumulation-when-using-onnxruntime-c-for-yolov8-inference-6b8dba60058c
 
 
 
