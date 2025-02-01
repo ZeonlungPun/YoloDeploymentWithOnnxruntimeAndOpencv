@@ -123,6 +123,18 @@ int main() {
 
 My experience about onnx deployment: https://medium.com/@zeonlungpun/how-to-avoid-unlimited-memory-accumulation-when-using-onnxruntime-c-for-yolov8-inference-6b8dba60058c
 
+introduction of libtroch,onnxruntime and opecv: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-1-some-hit-frameworks-and-their-usages-e31bf6e60a30
+
+deployment with object detection:  https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-2-object-detection-model-22b877b79737
+
+deployment with semantic segmentation: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-3-semantic-segmentation-model-883fd557126f
+
+deployment with instance segmentation: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-4-instance-segmentation-model-f6ef3d8a7725
+
+deployment with oriented object detection: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-5-oriented-object-detection-c5dc1210dd25
+
+deployment with key points detection (Pose estimation):https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-6-key-points-detection-pose-estimation-f28a057bfe1b
+
 
 
 # Reference Paper
