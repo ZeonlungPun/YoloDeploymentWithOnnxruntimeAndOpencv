@@ -32,11 +32,7 @@
 #include<torch/script.h>
 #include<cassert>
 
-float sigmoid_function(float a)
-{
-	float b = 1. / (1. + exp(-a));
-	return b;
-}
+
 class Yolov8segInference
 {
 public:
@@ -170,11 +166,11 @@ public:
 
                 // Ensure that the tuple has the expected number of elements
                 if (tuple->elements().size() >= 2) {
-                    // Extract the first tensor (e.g., segmentation result)
+                // Extract the first tensor:containing detected bounding boxes, class probability, mask coefficients
                     torch::Tensor detect_coeff_output = tuple->elements()[0].toTensor();
                     std::cout << "detect_coeff shape: " << detect_coeff_output.sizes() << std::endl;
 
-                    // Extract the second tensor (e.g., additional output like bounding boxes)
+                // Extract the second tensor:mask output  
                     torch::Tensor mask_output = tuple->elements()[1].toTensor();
                     std::cout << "mask Output shape: " << mask_output.sizes() << std::endl;
 
