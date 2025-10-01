@@ -1,0 +1,402 @@
+/*
+ * YolovUltralyticsInference: A YoloWorld-based inference class for open vocabulary object detection
+ * 
+ * Author: Zeonlung Pun
+ * Date: October 1, 2025
+ * 
+ * Description:
+ * This class provides an implementation of Ultralytics YoloWorld-based open vocabulary object detection algorithms inference 
+ * using ONNX and OpenCV.
+ * It includes methods for reading the model, reading the text embeding ,preprocessing input images, running inference,
+ * and drawing detection results on the input image.
+ * 
+ * Usage:
+ * The YolovUltralyticsInference class is instantiated with the ONNX model path,
+ * input image, and optional preprocessing and threshold parameters.
+ * The `main_process` function performs the complete inference and returns the processed image.
+ *
+ * Note:
+ * This code assumes the ONNX Runtime, cnpy and OpenCV libraries are properly installed and configured.
+ * 
+ * we will use cnpy to load the pre-saved text embeding in npz (numpy array) form.
+ * 
+ * 
+ * Contact: zeonlungpun@gmail.com
+ * 
+ */
+#include<onnxruntime_cxx_api.h>
+#include <assert.h>
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <string>
+#include "cnpy.h"
+
+class YolovUltralyticsInference {
+    /*
+	Initializes an instance of the YOLOv8 class.
+	Args:
+		onnx_path_name: Path to the ONNX model.
+		input_image: the original input image.
+		confidence_thres: Confidence threshold for filtering detections.
+		iou_thres: IoU (Intersection over Union) threshold for non-maximum suppression.
+		labels: Load your own model's class names
+	*/
+public:
+    
+    std::string onnx_path_name;
+    std::string text_embeding_path_name;
+    cv::Mat input_image, result_image;
+    float confidence_thres;
+    float iou_thres;
+    int model_input_w, model_input_h, model_output_h, model_output_w;
+    float x_factor, y_factor,ratio;
+    std::vector<std::string> preprocess_method;
+    std::vector<std::string> input_node_names;
+    std::vector<std::string> output_node_names;
+    Ort::Env env;
+    Ort::SessionOptions session_options;
+    Ort::Session session;
+    int top,left;
+  
+    
+
+
+    YolovUltralyticsInference(
+        
+        std::string onnx_path_name,
+        std::string text_embeding_path_name,
+        cv::Mat input_image,
+        std::vector<std::string> preprocess_method = std::vector<std::string>{"direct"},
+        float confidence_thres = 0.35,
+        float iou_thres = 0.3)
+        : onnx_path_name(onnx_path_name), text_embeding_path_name(text_embeding_path_name),
+          input_image(input_image),
+          preprocess_method(preprocess_method), confidence_thres(confidence_thres),
+          iou_thres(iou_thres), env(ORT_LOGGING_LEVEL_ERROR, "yolov-onnx"), session_options(),
+          session(nullptr)
+    {
+        this->model_input_w = 0;
+        this->model_input_h = 0;
+        this->model_output_h = 0;
+        this->model_output_w = 0;
+        this->x_factor = 0;
+        this->y_factor = 0;
+
+        session_options.SetGraphOptimizationLevel(ORT_ENABLE_BASIC);
+        read_model();
+    }
+
+    void read_model() {
+        std::ifstream infile(onnx_path_name);
+        if (!infile.good()) {
+            throw std::runtime_error("ONNX model file not found: " + onnx_path_name);
+        }
+
+        session = Ort::Session(env, onnx_path_name.c_str(), session_options);
+
+        size_t numInputNodes = session.GetInputCount();
+        size_t numOutputNodes = session.GetOutputCount();
+        Ort::AllocatorWithDefaultOptions allocator;
+
+        // Get input information (image)
+        auto input_name0 = session.GetInputNameAllocated(0, allocator);
+        input_node_names.push_back(input_name0.get());
+        Ort::TypeInfo input_type_info0 = session.GetInputTypeInfo(0);
+        auto input_tensor_info0 = input_type_info0.GetTensorTypeAndShapeInfo();
+        auto input_dims0 = input_tensor_info0.GetShape();
+
+        this->model_input_w = input_dims0[3];
+        this->model_input_h = input_dims0[2];
+        std::cout << "Input image format: BatchxCxHxW = " << input_dims0[0] << "x" << input_dims0[1] << "x"
+                      << input_dims0[2] << "x" << input_dims0[3] << std::endl;
+        
+        // Get input information (text)
+        auto input_name1 = session.GetInputNameAllocated(1, allocator);
+        input_node_names.push_back(input_name1.get());
+        Ort::TypeInfo input_type_info1 = session.GetInputTypeInfo(1);
+        auto input_tensor_info1 = input_type_info1.GetTensorTypeAndShapeInfo();
+        auto input_dims1 = input_tensor_info1.GetShape();
+
+        std::cout<<"input text embeding format: Bxnum_classxembeding_dim="<< input_dims1[0] << "x" << input_dims1[1] << "x"
+             << input_dims1[2]  << std::endl;
+       
+
+        // Get output information
+        Ort::TypeInfo output_type_info = session.GetOutputTypeInfo(0);
+        auto output_tensor_info = output_type_info.GetTensorTypeAndShapeInfo();
+        auto output_dims = output_tensor_info.GetShape();
+        this->model_output_h = output_dims[1];
+        this->model_output_w = output_dims[2];
+        std::cout << "Output format : BxHxW = " <<output_dims[0]<< "x" <<output_dims[1] << "x" << output_dims[2] << std::endl;
+
+        for (size_t i = 0; i < numOutputNodes; i++) {
+            auto out_name = session.GetOutputNameAllocated(i, allocator);
+            output_node_names.push_back(out_name.get());
+        }
+
+        this->x_factor = this->input_image.cols / static_cast<float>(this->model_input_w);
+        this->y_factor = this->input_image.rows / static_cast<float>(this->model_input_h);
+    }
+
+    std::vector<float> read_text_embeding()
+    {
+        /*
+        reading the preset categories-related class embeding
+        */
+        cnpy::npz_t npz = cnpy::npz_load(this->text_embeding_path_name);
+        cnpy::NpyArray array = npz["class_embeddings"];
+        float* text_embedings = array.data<float>();
+        std::vector<float> txt_feats(text_embedings, text_embedings + array.num_vals);
+        return txt_feats;
+        
+    }
+
+    cv::Mat preprocess() {
+               /*
+	Preprocesses the input image before performing inference.
+	prepocess_method:the image preprocess method,including direct,letter_box, square_padding
+	
+	Returns:
+		None
+	*/
+        this->result_image = this->input_image.clone();
+        cv::Mat blob;
+        // Convert the image color space from BGR to RGB
+        cv::cvtColor(this->input_image, this->input_image, cv::COLOR_BGR2RGB);
+
+        // Preprocesses the input image according to different selected method
+		if (this->preprocess_method== std::vector<std::string>{"direct"})
+		{	
+            
+			//Resize the image to match the input shape
+    		cv::resize(this->input_image,this->input_image,cv::Size(this->model_input_w,this->model_input_h));
+			//normalize the image from [0,255] to [0,1]
+			cv::dnn::blobFromImage(this->input_image,blob, 1 / 255.0, cv::Size(), cv::Scalar(0, 0, 0), false, false);
+		}
+		else if (this->preprocess_method==std::vector<std::string>{"letter_box"} )
+		{
+        // reference in yolov5
+			float ratio = std::min(static_cast<float>(this->model_input_h) / this->input_image.rows, 
+                       static_cast<float>(this->model_input_w) / this->input_image.cols);
+            int newh=(int) std::round(this->input_image.rows*ratio);
+            int neww=(int) std::round(this->input_image.cols*ratio);
+            cv::Size new_unpad(neww,newh);
+            //get the padding length in each size
+            float dw=(this->model_input_w-neww)/2;
+            float dh=(this->model_input_h-newh)/2;
+
+            if (neww !=this->model_input_w || newh !=this->model_input_h)
+            {  //resize the image with same ratio for wdith and height
+                cv::resize(this->input_image,this->input_image,new_unpad,cv::INTER_LINEAR);
+            }
+            // calculate the padding pixel around 
+            int top,bottom,left,right;
+            top =(int) std::round(dh-0.1);
+            bottom= (int) std::round(dh+0.1);
+            left = (int) std::round(dw-0.1);
+            right= (int) std::round(dw+0.1);
+            
+            this->top=top;
+            this->left=left;
+            this->ratio=ratio;
+           
+            cv::copyMakeBorder(this->input_image, this->input_image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+            cv::dnn::blobFromImage(this->input_image,blob, 1 / 255.0, cv::Size(this->model_input_w,this->model_input_h), cv::Scalar(0, 0, 0), true, false);
+
+		}
+		else if (this->preprocess_method==std::vector<std::string>{"square_padding"} )
+		{
+			// Prepare for square_padding method by handling padding and size consistency
+            int raw_image_w = this->input_image.cols;
+            int raw_image_h = this->input_image.rows;
+            int _max = std::max(raw_image_h, raw_image_w);
+            // calculate padding
+            int top = (_max - raw_image_h) / 2;
+            int bottom = _max - raw_image_h - top;
+            int left = (_max - raw_image_w) / 2;
+            int right = _max - raw_image_w - left;
+            // Create a temporary blank square image
+            cv::Mat temp_image;
+            //padding
+            cv::copyMakeBorder(this->input_image, temp_image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+            //record
+            this->ratio = static_cast<float>(this->model_input_w) / _max;
+            this->left = left;
+            this->top  = top;
+          
+            // Normalize and resize the image
+            cv::resize(temp_image, temp_image, cv::Size(this->model_input_w, this->model_input_h));
+            blob = cv::dnn::blobFromImage(temp_image, 1 / 255.0, cv::Size(), cv::Scalar(0, 0, 0), true, false);
+		}
+		else{
+			std::cout << "prepocess_method: ";
+			for (const auto& method : this->preprocess_method) {
+				std::cout << method << " ";}
+			std::cout << "does not exist" << std::endl;
+		}
+        return blob;
+		
+    }
+
+    cv::Mat draw_detections(cv::Mat img, std::vector<int> indexes, std::vector<cv::Rect> boxes, std::vector<int> classIds) {
+        /*
+	Draws bounding boxes and labels on the input image based on the detected objects.
+	Args:
+		img: The input image to draw detections on.
+		boxes: Detected bounding box before NMS.
+		classIds: Class ID for the detected object.
+		indexes: sample ID after NMS.
+	Returns:
+		The image with some detection boxes on.
+	*/
+        for (size_t i = 0; i < indexes.size(); i++) {
+            int index = indexes[i];
+            int idx = classIds[index];
+            cv::rectangle(img, boxes[index], cv::Scalar(0, 0, 255), 2, 8);
+        }
+        return img;
+    }
+
+    cv::Mat main_process() {
+        /*
+	Performs inference using an ONNX model and returns the output image with drawn detections.
+	Returns:
+		result_image: The output image with drawn detections.
+	*/
+ 
+        // Preprocess the image
+        cv::Mat blob=this->preprocess();
+
+        // Get input tensor shape info
+        size_t tpixels = this->model_input_h * this->model_input_w * 3;
+        int num_class = this->model_output_h-4;
+        std::cout<<"current class number is:"<<num_class<<std::endl;
+
+        std::vector<float> txt_feats = this->read_text_embeding();
+
+        std::array<int64_t, 4> input_img_shape_info{1, 3, this->model_input_h, this->model_input_w};
+        std::vector<int64_t> input_text_shape_info{1, (int64_t)num_class, 512};
+
+        // Create input tensor
+        auto allocator_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
+        Ort::Value input_tensor0 = Ort::Value::CreateTensor<float>(allocator_info, blob.ptr<float>(), tpixels, input_img_shape_info.data(), input_img_shape_info.size());
+        Ort::Value input_tensor1 = Ort::Value::CreateTensor<float>(allocator_info, txt_feats.data(), txt_feats.size(), input_text_shape_info.data(), input_text_shape_info.size());
+
+
+
+
+        const std::array<const char*, 2> inputNames = {this->input_node_names[0].c_str(),this->input_node_names[1].c_str()};
+        const std::array<const char*, 1> outNames = {this->output_node_names[0].c_str()};
+
+        // Perform inference
+        std::array<Ort::Value, 2> ort_inputs = {std::move(input_tensor0), std::move(input_tensor1)};
+
+        std::vector<Ort::Value> ort_outputs;
+        try {
+            ort_outputs = session.Run(Ort::RunOptions{nullptr}, inputNames.data(), ort_inputs.data(), ort_inputs.size(), outNames.data(), outNames.size());
+        } catch (const std::exception& e) {
+            std::cerr << "Error during ONNX inference: " << e.what() << std::endl;
+            return cv::Mat();
+        }
+
+        // Get model output
+        const float* pdata = ort_outputs[0].GetTensorMutableData<float>();
+        cv::Mat dout(this->model_output_h, this->model_output_w, CV_32F, (float*)pdata);
+        // 1x(4+num_class)x8400 --> 1x8400x(4+num_class)
+        cv::Mat det_output = dout.t();
+        
+
+        // Post-process detections
+        std::vector<cv::Rect> boxes;
+        std::vector<int> classIds;
+        std::vector<float> confidences;
+
+        for (int i = 0; i < det_output.rows; i++) {
+            cv::Mat classes_scores = det_output.row(i).colRange(4, 4 + num_class);
+
+            cv::Point classIdPoint;
+            double score;
+            minMaxLoc(classes_scores, 0, &score, 0, &classIdPoint);
+
+            if (score > this->confidence_thres) {
+               
+                float cx = det_output.at<float>(i, 0);
+                float cy = det_output.at<float>(i, 1);
+                float ow = det_output.at<float>(i, 2);
+                float oh = det_output.at<float>(i, 3);
+
+                if (this->preprocess_method == std::vector<std::string>{"letter_box"}) 
+                {
+                    // Adjust coordinates based on padding and scaling
+                    cx = (cx - this->left) / this->ratio;
+                    cy = (cy - this->top) / this->ratio;
+                    ow = ow / this->ratio;
+                    oh = oh / this->ratio;
+                }
+                else if (this->preprocess_method == std::vector<std::string>{"square_padding"})
+                {
+                    cx = (cx - this->left * this->ratio) / this->ratio;
+                    cy = (cy - this->top * this->ratio) / this->ratio;
+                    ow = ow / this->ratio;
+                    oh = oh / this->ratio;
+                }
+                else {
+                // For other preprocess methods, adjust x_factor and y_factor accordingly
+                    cx = cx * this->x_factor;
+                    cy = cy * this->y_factor;
+                    ow = ow * this->x_factor;
+                    oh = oh * this->y_factor;
+                }
+                
+                int x = static_cast<int>(cx - 0.5 * ow);
+                int y = static_cast<int>(cy - 0.5 * oh);
+                int width = static_cast<int>(ow);
+                int height = static_cast<int>(oh);
+
+               
+               
+                cv::Rect box(x, y, width, height);
+                boxes.push_back(box);
+                classIds.push_back(classIdPoint.x);
+                confidences.push_back(score);
+            }
+        }
+
+        // Apply Non-Maximum Suppression (NMS)
+        std::vector<int> indexes;
+        cv::dnn::NMSBoxes(boxes, confidences, this->confidence_thres, this->iou_thres, indexes);
+
+        // Draw detections
+        this->draw_detections(this->result_image, indexes, boxes, classIds);
+
+        return result_image;
+    }
+};
+
+int main() {
+    // Load the labels and test the class with an image
+    std::string img_name = "/home/punzeonlung/CPP/yolo-world/test2.jpg";
+    std::string onnx_path_name = "/home/punzeonlung/CPP/yolo-world/yolov8s-worldv2.onnx";
+    std::string text_embeding_path_name="/home/punzeonlung/CPP/yolo-world/class_embeddings.npz";
+    std::vector<std::string> preprocess_method = std::vector<std::string>{"letter_box"};
+    // Load the image
+    cv::Mat input_image = cv::imread(img_name);
+
+    // Instantiate the inference class
+    YolovUltralyticsInference inference(onnx_path_name,text_embeding_path_name, input_image,preprocess_method);
+
+    // Perform inference
+    cv::Mat output_image = inference.main_process();
+
+    // Save the output image
+    if (!output_image.empty()) {
+        cv::imwrite("/home/punzeonlung/CPP/yolo-world/result.jpg", output_image);
+        std::cout << "Inference completed and result saved." << std::endl;
+    } else {
+        std::cerr << "Inference failed." << std::endl;
+    }
+
+    return 0;
+}
