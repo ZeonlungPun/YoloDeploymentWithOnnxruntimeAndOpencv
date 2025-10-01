@@ -7,7 +7,7 @@ C++ is a key language for deployment.
 Now we offer the implentation of **Opencv 4.8**, **onnxruntime** and **libtorch** framework inference codes mainly on **linux** platform with cmakelist files in the **CPU** environment.
 
 # News
-[2025/10/1]: We release a implentation for **Yolo-World** -- Yolov8 based open ocabulary object detection model  using **onnxruntime**.
+[2025/10/1]: We release a implentation for **Yolo-World** -- Yolov8 based open ocabulary object detection model  using **onnxruntime**.  Code is available  [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/yolo-world).
 [2024/10/1]: We release a implentation for the comprehensive **object detection** (such as Yolov5 , Yolov8 and  Yolov11) inference developed by [Ultralytics](https://github.com/ultralytics/ultralytics) using **onnxruntime**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/yoloUltralytics.cpp).
 </br>
 [2024/5/6]: We release a implentation for the  **YoloT**, which is use for object detection in the filed of **Remote Sensing**. Code is available [here](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/tree/main/YoloT.cpp).
