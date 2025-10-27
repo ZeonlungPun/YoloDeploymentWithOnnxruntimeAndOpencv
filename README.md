@@ -28,7 +28,9 @@ YoloT for small object detection In Satellite Imagery.
 
 Yolov8obb for rotated object detection.
 
-YoloP for Autopilot。
+Yolo-World for open-vocabulary object detection.
+
+YoloP for Autopilot.
 
 Yolov8pose for key points detection.
 
