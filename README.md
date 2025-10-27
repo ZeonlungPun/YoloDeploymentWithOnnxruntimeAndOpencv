@@ -137,7 +137,7 @@ deployment with oriented object detection: https://medium.com/@zeonlungpun/deep-
 
 deployment with key points detection (Pose estimation):https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-6-key-points-detection-pose-estimation-f28a057bfe1b
 
-
+deployment with open-vocabulary object detection (Yolo-World): https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-7-open-vocabulary-object-detection-49e29397bc81
 
 # Reference Paper
 
