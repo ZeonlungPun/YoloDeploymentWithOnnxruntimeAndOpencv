@@ -28,23 +28,19 @@ Now we offer the implentation of **Opencv 4.8**, **onnxruntime** and **libtorch*
 
 
 
-# Function
+# 💡 Supported Computer Vision Tasks
+| Task Type | Key Models Implemented | Description |
+| :--- | :--- | :--- |
+| **Object Detection** | YOLOv5, YOLOv7, YOLOv8, RT-DETR | General-purpose object localization and classification. |
+| **Open-Vocabulary Detection** | Yolo-World | Enables zero-shot or few-shot detection using text prompts. |
+| **Oriented BBox Detection** | YOLOv8-obb | Detection of rotated objects, ideal for satellite/aerial imagery. |
+| **Instance Segmentation** | YOLOv8-seg, YOLOv5-seg | Pixel-level classification and object instance differentiation. |
+| **Pose Estimation** | YOLOv8-pose | Keypoint detection for human or object pose. |
+| **Autonomous Driving** | YoloP | Perception tasks tailored for self-driving scenarios. |
+| **Small Object Detection** | YoloT | Specialized detection for small targets in satellite imagery. |
 
-The models now include Yolov5 , Yolov7, Yolov8 ,RTDETR for object detection.
 
-YoloT for small object detection In Satellite Imagery.
-
-Yolov8obb for rotated object detection.
-
-Yolo-World for open-vocabulary object detection.
-
-YoloP for Autopilot.
-
-Yolov8pose for key points detection.
-
-YOLOV8-instance-seg and yolov5-seg.cpp for instance segemention.
-
-# Package Version
+# 🛠️ Package Version
 
 
 onnxruntime-linux-x64-1.16.3
@@ -53,7 +49,7 @@ opencv 4.8
 
 libtorch 2.1.2
 
-# CUDA
+# CUDA (Optional)
 
 Using CUDA with onnxruntime:
 ```
@@ -131,42 +127,34 @@ int main() {
     return 0;
 }
 ```
-# Related Blogs
+# 📚 Related Blogs and Articles
 
-My experience about onnx deployment: https://medium.com/@zeonlungpun/how-to-avoid-unlimited-memory-accumulation-when-using-onnxruntime-c-for-yolov8-inference-6b8dba60058c
+| Topic | Medium Article Link |
+| :--- | :--- |
+| **ONNX Runtime Memory Optimization** | [How to avoid unlimited memory accumulation when using onnxruntime C++ for yolov8 inference](https://medium.com/@zeonlungpun/how-to-avoid-unlimited-memory-accumulation-when-using-onnxruntime-c-for-yolov8-inference-6b8dba60058c) |
+| **Framework Overview (LibTorch, ONNX, OpenCV)** | [Deep learning models inference and deployment with C++ (1): Some hit frameworks and their usages](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-1-some-hit-frameworks-and-their-usages-e31bf6e60a30) |
+| **Object Detection Deployment** | [Deep learning models inference and deployment with C++ (2): Object Detection Model](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-2-object-detection-model-22b877b79737) |
+| **Instance Segmentation Deployment** | [Deep learning models inference and deployment with C++ (4): Instance Segmentation Model](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-4-instance-segmentation-model-f6ef3d8a7725) |
+| **Oriented Object Detection Deployment** | [Deep learning models inference and deployment with C++ (5): Oriented Object Detection](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-5-oriented-object-detection-c5dc1210dd25) |
+| **Pose Estimation Deployment** | [Deep learning models inference and deployment with C++ (6): Key Points Detection (Pose estimation)](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-6-key-points-detection-pose-estimation-f28a057bfe1b) |
+| **Open-Vocabulary Detection Deployment (Yolo-World)** | [Deep learning models inference and deployment with C++ (7): Open-Vocabulary Object Detection](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-7-open-vocabulary-object-detection-49e29397bc81) |
 
-introduction of libtroch,onnxruntime and opecv: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-1-some-hit-frameworks-and-their-usages-e31bf6e60a30
+# 📄 Reference Paper
 
-deployment with object detection:  https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-2-object-detection-model-22b877b79737
-
-deployment with semantic segmentation: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-3-semantic-segmentation-model-883fd557126f
-
-deployment with instance segmentation: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-4-instance-segmentation-model-f6ef3d8a7725
-
-deployment with oriented object detection: https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-5-oriented-object-detection-c5dc1210dd25
-
-deployment with key points detection (Pose estimation):https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-6-key-points-detection-pose-estimation-f28a057bfe1b
-
-deployment with open-vocabulary object detection (Yolo-World): https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-7-open-vocabulary-object-detection-49e29397bc81
-
-# Reference Paper
-
-Yolov7: https://arxiv.org/abs/2207.02696
-
-RTDETR: https://arxiv.org/abs/2304.08069
-
-YoloP : https://arxiv.org/abs/2108.11250
-
-YOLACT/Yolov8seg:https://arxiv.org/abs/1904.02689
-
-YoloT: https://arxiv.org/pdf/1805.09512.pdf
-
-Yolopose/yolov8pose: https://arxiv.org/abs/2204.06806
+| Model | Paper Link |
+| :--- | :--- |
+| **YOLOv7** | [arXiv:2207.02696](https://arxiv.org/abs/2207.02696) |
+| **RT-DETR** | [arXiv:2304.08069](https://arxiv.org/abs/2304.08069) |
+| **YoloP** | [arXiv:2108.11250](https://arxiv.org/abs/2108.11250) |
+| **YOLACT/Yolov8seg** | [arXiv:1904.02689](https://arxiv.org/abs/1904.02689) |
+| **YoloT** | [arXiv:1805.09512.pdf](https://arxiv.org/pdf/1805.09512.pdf) |
+| **Yolov8-pose** | [arXiv:2204.06806](https://arxiv.org/abs/2204.06806) |
+| **Yolo-World** |[arXiv:2401.17270](https://arxiv.org/pdf/2401.17270)|
 
 
 
-# Citation
-If you think our wokr is helpful, please give us a star or citate our repository:
+# ⭐ Citation
+If you think our wokr is helpful, please give us a star ⭐ or cite our repository:
 ```
 @misc{YOLOVDeploymentC++,
   author       = {Zeonlung Pun},
@@ -176,6 +164,6 @@ If you think our wokr is helpful, please give us a star or citate our repository
 }
 ```
 
-# Other Language
+#🌍 Other Language
 
 [中文版](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README_ch.md) 
