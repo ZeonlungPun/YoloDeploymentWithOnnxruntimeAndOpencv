@@ -6,6 +6,16 @@ C++ is a key language for deployment.
 
 Now we offer the implentation of **Opencv 4.8**, **onnxruntime** and **libtorch** framework inference codes mainly on **linux** platform with cmakelist files in the **CPU** environment.
 
+
+# 🎯 Core Technology Stack
+| Framework / Library | Version | Primary Use |
+| :--- | :--- | :--- |
+| **ONNX Runtime** | $\ge 1.16.3$ | High-performance ONNX model inference. |
+| **OpenCV** | $\ge 4.8$ | Image processing and DNN module inference. |
+| **LibTorch** | $\ge 2.1.2$ | Native inference for PyTorch models (TorchScript). |
+
+
+
 # ✨ Project News and Updates
 | Date           | Content                                                                                  | Code Link                                 |
 |----------------|------------------------------------------------------------------------------------------|-------------------------------------------|
