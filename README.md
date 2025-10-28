@@ -147,7 +147,7 @@ int main() {
 | **RT-DETR** | [arXiv:2304.08069](https://arxiv.org/abs/2304.08069) |
 | **YoloP** | [arXiv:2108.11250](https://arxiv.org/abs/2108.11250) |
 | **YOLACT/Yolov8seg** | [arXiv:1904.02689](https://arxiv.org/abs/1904.02689) |
-| **YoloT** | [arXiv:1805.09512.pdf](https://arxiv.org/pdf/1805.09512.pdf) |
+| **YoloT** | [arXiv:1805.09512](https://arxiv.org/pdf/1805.09512.pdf) |
 | **Yolov8-pose** | [arXiv:2204.06806](https://arxiv.org/abs/2204.06806) |
 | **Yolo-World** |[arXiv:2401.17270](https://arxiv.org/pdf/2401.17270)|
 
@@ -164,6 +164,6 @@ If you think our wokr is helpful, please give us a star ⭐ or cite our reposito
 }
 ```
 
-#🌍 Other Language
+# 🌍 Other Language
 
 [中文版](https://github.com/ZeonlungPun/YoloDeploymentWithOnnxruntimeAndOpencv/blob/main/README_ch.md) 
