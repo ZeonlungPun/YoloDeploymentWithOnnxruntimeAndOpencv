@@ -131,6 +131,7 @@ int main() {
 
 | Topic | Medium Article Link |
 | :--- | :--- |
+|**how to accelarate inference on the edge device**|[how to accelarate inference on the edge device](https://medium.com/p/dbda3a9eaf86?postPublishedType=initial)|
 | **ONNX Runtime Memory Optimization** | [How to avoid unlimited memory accumulation when using onnxruntime C++ for yolov8 inference](https://medium.com/@zeonlungpun/how-to-avoid-unlimited-memory-accumulation-when-using-onnxruntime-c-for-yolov8-inference-6b8dba60058c) |
 | **Framework Overview (LibTorch, ONNX, OpenCV)** | [Deep learning models inference and deployment with C++ (1): Some hit frameworks and their usages](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-1-some-hit-frameworks-and-their-usages-e31bf6e60a30) |
 | **Object Detection Deployment** | [Deep learning models inference and deployment with C++ (2): Object Detection Model](https://medium.com/@zeonlungpun/deep-learning-models-inference-and-deployment-with-c-2-object-detection-model-22b877b79737) |
