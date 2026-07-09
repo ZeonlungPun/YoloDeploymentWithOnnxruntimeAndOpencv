@@ -1,7 +1,6 @@
 /*
  * YolovUltralyticsInference: A YOLOv8-based inference class for object detection with multi-threading support
  * 
- * 
  * Author: Zeonlung Pun
  * Date: July 5th, 2026
  * 
@@ -27,7 +26,6 @@
  * 
  */
 #include<onnxruntime_cxx_api.h>
-#include <assert.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>
@@ -36,13 +34,68 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+#include <atomic>
+#include <iostream>
+#include <fstream>
+#include <unistd.h>
+#include <sys/times.h>
+#include <sys/vfs.h>
+
+// 結構體：用來記錄進程的 CPU 時間片
+struct CPU_Time {
+    unsigned long utime;  // 使用者態時間
+    unsigned long stime;  // 核心態時間
+    double real_time;     // 壁鐘時間（真實世界時間）
+};
+
+// 獲取當前進程的 CPU 狀態
+CPU_Time get_process_cpu_time() {
+    CPU_Time t;
+    std::ifstream stat_file("/proc/self/stat");
+    std::string tmp;
+    
+    // /proc/self/stat 的第 14 和 15 個欄位分別是 utime 和 stime
+    // 我們跳過前 13 個欄位
+    for (int i = 0; i < 13; ++i) stat_file >> tmp;
+    stat_file >> t.utime >> t.stime;
+    
+    // 獲取當前高精度真實時間
+    auto now = std::chrono::high_resolution_clock::now();
+    t.real_time = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count() / 1000000.0;
+    
+    return t;
+}
+
+// 計算平均 CPU 佔用率
+double calculate_cpu_usage(const CPU_Time& start, const CPU_Time& end) {
+    long hertz = sysconf(_SC_CLK_TCK); // 獲取系統每秒的時鐘滴答數 (通常是 100)
+    
+    unsigned long delta_user = end.utime - start.utime;
+    unsigned long delta_sys = end.stime - start.stime;
+    double delta_time = end.real_time - start.real_time;
+    
+    if (delta_time <= 0) return 0.0;
+    
+    // 總佔用時間片（秒） = (使用者態 + 核心態) / 系統赫茲
+    double total_cpu_time_seconds = (double)(delta_user + delta_sys) / hertz;
+    
+    // CPU 佔用率百分比
+    return (total_cpu_time_seconds / delta_time) * 100.0;
+}
+
+
+std::mutex log_mutex;
+void safe_log(const std::string& msg) {
+    std::lock_guard<std::mutex> lock(log_mutex);
+    std::cout << msg << std::endl;
+}
 
 // a structure to hold the data for each frame in the pipeline
 struct FrameData
 {
     cv::Mat input_image; // Original input image
     cv::Mat preprocessed_image; // Preprocessed image for inference
-    cv::Mat result_image; // Result image with drawn detections
     int image_id; // Unique identifier for the frame
     std::vector<cv::Rect> boxes; // Detected bounding boxes
     std::vector<int> classIds; // Class IDs for detected objects
@@ -101,6 +154,10 @@ public:
       
 
         session_options.SetGraphOptimizationLevel(ORT_ENABLE_BASIC);
+        session_options.SetIntraOpNumThreads(2);
+        session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+     
+    
         read_model();
     }
 
@@ -160,7 +217,7 @@ public:
 	*/
         frameData.input_image = src_img.clone();
         // Convert the image color space from BGR to RGB
-        cv::cvtColor(frameData.input_image, frameData.input_image, cv::COLOR_BGR2RGB);
+        cv::cvtColor(frameData.input_image, frameData.preprocessed_image, cv::COLOR_BGR2RGB);
 
         // Preprocesses the input image according to different selected method
 		
@@ -176,7 +233,7 @@ public:
 
         if (neww !=this->model_input_w || newh !=this->model_input_h)
         {  //resize the image with same ratio for wdith and height
-            cv::resize(frameData.input_image,frameData.input_image,new_unpad,cv::INTER_LINEAR);
+            cv::resize(frameData.input_image,frameData.preprocessed_image,new_unpad,cv::INTER_LINEAR);
         }
         // calculate the padding pixel around 
         int top,bottom,left,right;
@@ -189,7 +246,7 @@ public:
         frameData.left=left;
         frameData.ratio=ratio;
         
-        cv::copyMakeBorder(frameData.input_image, frameData.input_image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+        cv::copyMakeBorder(frameData.preprocessed_image, frameData.preprocessed_image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
         cv::dnn::blobFromImage(frameData.input_image,frameData.blob, 1 / 255.0, cv::Size(this->model_input_w,this->model_input_h), cv::Scalar(0, 0, 0), true, false);
 
         frameData.x_factor = frameData.input_image.cols / static_cast<float>(this->model_input_w);
@@ -296,6 +353,29 @@ public:
         for (size_t i = 0; i < frameData.boxes.size(); i++) {
             
             cv::rectangle(frameData.input_image, frameData.boxes[i], cv::Scalar(0, 0, 255), 2, 8);
+            std::string label = labels[frameData.classIds[i]];
+            int baseline = 0;
+            cv::Size textSize = cv::getTextSize(
+            label,
+            cv::FONT_HERSHEY_SIMPLEX,
+            0.6,
+            2,
+            &baseline);
+            const cv::Rect &box = frameData.boxes[i];
+            int x = box.x;
+            int y = std::max(box.y - 5, textSize.height);
+            cv::rectangle(frameData.input_image,
+                cv::Point(x, y - textSize.height - baseline),
+                cv::Point(x + textSize.width, y + baseline),
+                cv::Scalar(0,0,0),
+                cv::FILLED);
+            cv::putText(frameData.input_image,
+              label,
+              cv::Point(x, y),
+              cv::FONT_HERSHEY_SIMPLEX,
+              0.6,
+              cv::Scalar(255,255,255),
+              2);
         }
         
     }
@@ -322,11 +402,11 @@ int main()
 {
     std::vector<std::string> labels = {"person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"};
 
-    std::string onnx_path_name = "/home/punzeonlung/CPP/yolov8/yolov8n.onnx";
-    std::string video_path = "/home/punzeonlung/CPP/ByteTrackYOLOX/people.mp4";
+    std::string onnx_path_name = "/home/zonekey/project/multi-thread/yolov8n.onnx";
+    std::string video_path = "/home/zonekey/video_analyse/libtea/build_x3/test_video/test1.mp4";
     
     // Create an instance of the YolovUltralyticsInference class
-    YolovUltralyticsInference yolo(labels, onnx_path_name, 0.2, 0.4);
+    YolovUltralyticsInference yolo(labels, onnx_path_name, 0.25, 0.4);
     yolo.read_model();
 
     // Load the video
@@ -336,36 +416,67 @@ int main()
         return -1;
     }   
     // set up the video writer to save the output video with detections
+    int total_frames = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_COUNT));
     int width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
     int height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
     double fps = cap.get(cv::CAP_PROP_FPS);
     
-    cv::VideoWriter writer("./result.avi", 
-                           cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, cv::Size(width, height));
+    cv::VideoWriter writer("./result.mp4", 
+                           cv::VideoWriter::fourcc('X', '2', '6', '4'), fps, cv::Size(width, height));
+    if(!writer.isOpened())
+    {
+        std::cout<<"VideoWriter open failed"<<std::endl;
+        return -1;
+    }
+
+    std::atomic<long long> total_preprocess_us{0};
+    std::atomic<long long> total_inference_us{0};
+    std::atomic<long long> total_postprocess_us{0};
+   
     
-    int frame_id = -1;
+    int frame_id = 0;
+
+    CPU_Time cpu_start = get_process_cpu_time();
 
     // Start the preprocessing thread
     std::thread thread_preprocessing([&]() {
-        
-        while (!quit) {
-
+        safe_log("[Preprocess] thread kickstart");
+        while (true) {
+            auto t_start = std::chrono::high_resolution_clock::now();
             cv::Mat frame;
             if (!cap.read(frame)) {
+                safe_log("[Preprocess] 影片讀取完畢，正在發送退出訊號...");
+                //frames are all read,kickstart the exit system
+                std::unique_lock<std::mutex> lock1(preprocessed_mutex);
+                std::unique_lock<std::mutex> lock2(inference_mutex);
+
                 quit = true;
-                break; // Exit the loop if no more frames are available
+                //notify all the threads
+                cv_pre_notempty.notify_all();
+                cv_pre_notfull.notify_all();
+                cv_inference_notempty.notify_all();
+                cv_inference_notfull.notify_all();
+                break;; // Exit the loop if no more frames are available
             }
              // create a FrameData object to hold the data for this frame
             FrameData frameData;
             frameData.image_id = frame_id++;
             yolo.preprocess(frame, frameData);
-            std::unique_lock<std::mutex> lock(preprocessed_mutex);
+
+            auto t_end = std::chrono::high_resolution_clock::now();
+            total_preprocess_us += std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
             
+            // mutex for the preprocessed_pending
+            std::unique_lock<std::mutex> lock_pre(preprocessed_mutex);
             // if here is congestion, it means that the downstream processing is slower than the upstream processing, 
             //we need to wait for the downstream to catch up
-            cv_pre_notfull.wait(lock, []
+            cv_pre_notfull.wait(lock_pre, []
                 { return preprocessed_pending.size() < MAX_PENDING_TASK || quit; });
             if (quit) return;
+            // 每 30 幀打印一次進度，避免日誌刷屏
+            if (frameData.image_id % 30 == 0 || total_frames - frameData.image_id < 5) {
+                safe_log("[Preprocess] 已預處理 Frame ID: " + std::to_string(frameData.image_id));
+            }
 
             // Add the preprocessed frame to the queue
             // and notify the inference thread that a new frame is available for processing
@@ -374,15 +485,6 @@ int main()
             cv_pre_notempty.notify_one();
         }
 
-        //end signal for the inference thread, push an empty frameData to the preprocessed_pending queue
-        {
-            std::unique_lock<std::mutex> lock(preprocessed_mutex);
-            FrameData endSignal;
-            endSignal.input_image = cv::Mat(); // Empty image to signal the end
-            preprocessed_pending.push_back(endSignal);
-            cv_pre_notfull.notify_one();
-        }
-       
         std::cout << "Preprocessing thread ended.\n";
     });     
 
@@ -390,12 +492,14 @@ int main()
     std::thread thread_inference([&]() {
         while (true) 
         {
+            auto t_start = std::chrono::high_resolution_clock::now();
             //get data from the preprocessed_pending queue
             FrameData frameData;
             {
-                std::unique_lock<std::mutex> lock_pre(preprocessed_mutex);
-                cv_pre_notempty.wait(lock_pre, []
-                    { return !preprocessed_pending.empty() || quit; });
+                std::unique_lock<std::mutex> lock(preprocessed_mutex);
+                
+                cv_pre_notempty.wait(lock, []
+                    { return !preprocessed_pending.empty()|| quit; });
                 if (preprocessed_pending.empty() && quit) break;
                 if (quit ) return;
 
@@ -408,20 +512,21 @@ int main()
 
             //get the end signal from the preprocessing thread, if the preprocessing thread has ended and the preprocessed_pending queue is empty, then we can end the inference thread
             if (frameData.input_image.empty()) {
-                std::unique_lock<std::mutex> lock2(inference_mutex);
-                cv_inference_notfull.notify_one();
-                break;
+                
+                return;
             }
-           
+            
             // implement the inference on the preprocessed frame
             yolo.MainInference(frameData);
+            auto t_end = std::chrono::high_resolution_clock::now();
+            total_inference_us += std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
             // finish inference, push the frameData to the inference_pending queue for post-processing
             {
-                std::unique_lock<std::mutex> lock_post(inference_mutex);
-                cv_inference_notfull.wait(lock_post, []
+                std::unique_lock<std::mutex> lock_infer(inference_mutex);
+                cv_inference_notfull.wait(lock_infer, []
                     { return inference_pending.size() < MAX_PENDING_TASK || quit; });
                 
-                if(quit) break;    
+                if(quit && inference_pending.empty()) break;    
                 inference_pending.push_back(frameData);
                 //notify the post-processing thread that a new frame is available for processing
                 cv_inference_notempty.notify_one();
@@ -437,42 +542,133 @@ int main()
     // Start the post-processing thread
     std::thread thread_postprocessing([&]() {
         while (true) {
+            auto t_start = std::chrono::high_resolution_clock::now();
             // get data from the inference_pending queue
             FrameData frameData;
             {
                 std::unique_lock<std::mutex> lock_post(inference_mutex);
                 cv_inference_notempty.wait(lock_post, []
-                    { return !inference_pending.empty(); });
+                    { return !inference_pending.empty() || quit; });
                 if (inference_pending.empty() && quit) break;
-                if (quit) return;
+                
                 frameData = inference_pending.front();
                 inference_pending.pop_front();
 
                 //notify the inference thread that there is space in the queue
                 cv_inference_notfull.notify_one();
             }
-
-            //end signal from the inference thread, if the inference thread has ended and the inference_pending queue is empty, then we can end the post-processing thread
-            if (frameData.input_image.empty()) {
-                break;
-            }
+            
             yolo.draw_detections(frameData);
             // Save the result image to the output video
-            writer.write(frameData.input_image);    
+            writer.write(frameData.input_image);
+            auto t_end = std::chrono::high_resolution_clock::now();
+            total_postprocess_us += std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
+           
+   
             
                         
         }
         std::cout << "Post-processing thread ended."<<std::endl;
     });
         
-    
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     thread_preprocessing.join();
     thread_inference.join();
     thread_postprocessing.join();
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> total_duration = end_time - start_time;
+
+    CPU_Time cpu_end = get_process_cpu_time();
+    double avg_cpu_usage = calculate_cpu_usage(cpu_start, cpu_end);
+    int total_cores = sysconf(_SC_NPROCESSORS_ONLN); // 獲取機器總核心數
+
+    double total_seconds = total_duration.count();
+    double FPS =  total_frames / total_seconds;
+    double avg_preprocess = (total_preprocess_us / total_frames) / 1000.0;
+    double avg_inference  = (total_inference_us / total_frames) / 1000.0;
+    double avg_postprocess = (total_postprocess_us / total_frames) / 1000.0;
+   
+
+    std::cout<< "============= multi-thread evaluation============="<<std::endl;
+    std::cout<< "multi-thread FPS:" << FPS << std::endl;
+    std::cout << "average preprocess time:"<<avg_preprocess<<std::endl;
+    std::cout << "average inference time:"<<avg_inference<<std::endl;
+    std::cout << "average postprocess time:"<<avg_postprocess<<std::endl;
+    std::cout << "Actual Total Run Time : " << total_seconds << " seconds" << std::endl;
+    std::cout << "  - process avg CPU usage: " << avg_cpu_usage << " %\n";
+    std::cout << "  - system usable CPU : " << total_cores << " cores\n";
+    std::cout << "  - consuming CPU : " << (avg_cpu_usage / 100.0) << "cores\n";
+    std::cout << "=======================================" << std::endl;
     
-    cap.release();
+   
     writer.release();
+    std::cout << "All pipeline finished successfully." << std::endl;
+
+    // make comparision with single thread
+    cap.set(cv::CAP_PROP_POS_FRAMES, 0);
+    cv::VideoWriter writer_single("./result2.mp4", 
+        cv::VideoWriter::fourcc('X', '2', '6', '4'), fps, cv::Size(width, height));
+    
+    std::atomic<long long> total_preprocess_single{0};
+    std::atomic<long long> total_inference_single{0};
+    std::atomic<long long> total_postprocess_single{0};
+    int frame_id_s = 0;
+    
+    CPU_Time cpu_start_single = get_process_cpu_time();
+    auto start_time_single = std::chrono::high_resolution_clock::now();
+    while (true)
+    {
+        auto t_start = std::chrono::high_resolution_clock::now();
+        cv::Mat frame;
+        if(!cap.read(frame))
+        {
+            break;
+        }
+        FrameData frameData;
+        frameData.image_id = frame_id_s++;
+        yolo.preprocess(frame, frameData);
+        auto t_end_pre = std::chrono::high_resolution_clock::now();
+        total_preprocess_single += std::chrono::duration_cast<std::chrono::microseconds>(t_end_pre - t_start).count();
+        yolo.MainInference(frameData);
+        auto t_end_infer = std::chrono::high_resolution_clock::now();
+        total_inference_single += std::chrono::duration_cast<std::chrono::microseconds>(t_end_infer - t_end_pre).count();
+        yolo.draw_detections(frameData);
+        writer_single.write(frameData.input_image);
+        auto t_end_post = std::chrono::high_resolution_clock::now();
+        total_postprocess_single += std::chrono::duration_cast<std::chrono::microseconds>(t_end_post - t_end_infer).count();
+        
+
+    }
+    auto end_time_single = std::chrono::high_resolution_clock::now();
+    CPU_Time cpu_end_single = get_process_cpu_time();
+    double avg_cpu_usage_single = calculate_cpu_usage(cpu_start_single, cpu_end_single);
+    
+
+    std::chrono::duration<double> total_duration_single = end_time_single - start_time_single;
+    double total_seconds_single = total_duration_single.count();
+    double FPS_single =  total_frames / total_seconds_single;
+    double avg_preprocess_single = (total_preprocess_single / total_frames) / 1000.0;
+    double avg_inference_single  = (total_inference_single / total_frames) / 1000.0;
+    double avg_postprocess_single = (total_postprocess_single / total_frames) / 1000.0;
+   
+
+    std::cout<< "============= single-thread evaluation============="<<std::endl;
+    std::cout<< "single-thread FPS:" << FPS_single << std::endl;
+    std::cout << "average preprocess time:"<<avg_preprocess_single<<std::endl;
+    std::cout << "average inference time:"<<avg_inference_single<<std::endl;
+    std::cout << "average postprocess time:"<<avg_postprocess_single<<std::endl;
+    std::cout << "Actual Total Run Time : " << total_seconds_single << " seconds" << std::endl; 
+    std::cout << "  - process avg CPU usage: " << avg_cpu_usage_single << " %\n";
+    std::cout << "  - system usable CPU : " << total_cores << " cores\n";
+    std::cout << "  - consuming CPU : " << (avg_cpu_usage_single / 100.0) << "cores\n";
+    std::cout << "=======================================" << std::endl;
+    cap.release();
+    writer_single.release();
+    
+
+
 
     return 0;
 
